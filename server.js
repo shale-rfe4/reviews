@@ -74,13 +74,13 @@ app.post('/reviews', (req, res) => {
   const recommend = req.body.recommend;
   const name = req.body.name;
   const email = req.body.email;
-  const characteristics = req.body.characteristics;
   const date = Date.now();
   const helpfulness = 3;
   const reported = 'false';
   const response = '';
   console.log('photos: ', req.body.photos)
   const photos = req.body.photos;
+  const characteristics = req.body.characteristics;
   const query = `INSERT INTO reviews
   (rating, summary, recommend, body, date, reviewer_name, helpfulness, product_id, reviewer_email, reported, response)
     values ('${rating}', '${summary}', '${recommend}', '${body}',
@@ -97,9 +97,21 @@ app.post('/reviews', (req, res) => {
         photos.forEach(photo => client.query(photoQuery, [photo])
                               .then(result => console.log('here we are: ', result.rows))
                               .catch(err => console.log(err)))
-        console.log('hi!!!!!!!!!!!!!!!!!!!')
       }
 
+      // insert into characteristic_reviews table
+      // $1=characteristic_id which is key of characteristics
+      // $2=value which is value of characteristics
+      const characteristicQuery = `
+        insert into characteristic_reviews (characteristic_id,
+          review_id, value)
+          values ($1, '${reviewId}', $2)
+          returning *`
+      for (const prop in characteristics) {
+        client.query(characteristicQuery, [prop, characteristics[prop]])
+        .then(res => console.log(res.rows))
+        .catch(() => console.log('problem'))
+      }
       res.send('success')})
     .catch(err => {
       console.log(err);
