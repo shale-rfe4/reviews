@@ -1,6 +1,7 @@
 const express = require('express');
 const { client } = require('./database')
 const bodyParser = require('body-parser')
+const queryString = require('querystring')
 const app = express();
 app.use(bodyParser.json());
 const port = 3000;
@@ -11,9 +12,19 @@ app.get('/', (req, res) => {
 
 app.get('/reviews/:productId', (req, res) => {
   const product_id = req.params.productId;
+  const order = req.query.sort || 'helpfulness';
+  console.log(order)
+  const page = req.query.page || 1;
+  const count = req.query.count || 5;
+  console.log('count: ',count,' page: ', page)
+  console.log(order)
   const query = `
     SELECT * FROM reviews
-    WHERE product_id=${product_id}`
+    WHERE product_id=${product_id}
+    and reported='false'
+    order by ${order} desc
+    limit ${count}
+    offset ${(page - 1) * count}`
   client.query(query, (err, result) => {
     if (err) {
       res.send(err);
@@ -25,6 +36,7 @@ app.get('/reviews/:productId', (req, res) => {
 
 app.get('/reviews/meta/:productId', (req, res) => {
   const product_id = req.params.productId;
+
   const query = `
     SELECT name, AVG(value) FROM
     characteristic_reviews join characteristics
@@ -117,6 +129,24 @@ app.post('/reviews', (req, res) => {
       console.log(err);
       res.send('error');
     })
+})
+
+app.put('/reviews/:reviewId/helpful', (req, res) => {
+  const query = `
+  update reviews set helpfulness = helpfulness + 1
+  where id = ${req.params.reviewId}`;
+  client.query(query)
+  .then(result => res.status(204).send())
+  .catch(err => res.status(500).send())
+})
+
+app.put('/reviews/:reviewId/report', (req, res) => {
+  const query = `
+  update reviews set reported = 'true'
+  where id = ${req.params.reviewId}`
+  client.query(query)
+    .then(result => res.status(204).send())
+    .catch(err => res.status(500).send())
 })
 app.listen(port, () => {
   console.log(`listening on port ${port}`)
