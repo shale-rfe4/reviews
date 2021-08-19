@@ -19,9 +19,14 @@ app.get('/reviews/:productId', (req, res) => {
   console.log('count: ',count,' page: ', page)
   console.log(order)
   const query = `
-    SELECT * FROM reviews
+    SELECT reviews.id as review_id, rating, summary,
+    recommend, response, body,
+    date, reviewer_name, helpfulness, array_agg(json_build_object('id', photos.id, 'url', photos.url)) as photos
+    FROM reviews JOIN photos
+    ON reviews.id = photos.review_id
     WHERE product_id=${product_id}
     and reported='false'
+    GROUP BY reviews.id
     order by ${order} desc
     limit ${count}
     offset ${(page - 1) * count}`
@@ -29,10 +34,17 @@ app.get('/reviews/:productId', (req, res) => {
     if (err) {
       res.send(err);
     } else {
-      res.send(result)
+      const photoQuery = `
+      SELECT url FROM photos
+      WHERE review_id = `
+      res.json({
+        page: page,
+        count: count,
+        product: product_id,
+        results: result.rows
     }
-  })
-})
+    )}
+})})
 
 app.get('/reviews/meta/:productId', (req, res) => {
   const product_id = req.params.productId;
